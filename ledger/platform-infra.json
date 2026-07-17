@@ -12,7 +12,11 @@
       "approval_comment": "infra to staging"
     },
     "prod": {
-      "version": "sha-62c56b6"
+      "version": "sha-62c56b6",
+      "approved_by": "mbeema",
+      "approved_at": "2026-07-17T18:53:23Z",
+      "run_id": "29605486441",
+      "approval_comment": "infra to prod"
     }
   }
 }
