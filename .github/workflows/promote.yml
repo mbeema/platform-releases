@@ -46,32 +46,21 @@ jobs:
             echo "Releasing: $MATRIX"
           fi
 
-  # ---- Deploy ONLY the changed services, in parallel ----
+  # ---- Deploy ONLY the changed services via the CENTRAL pipeline ----
   release:
     needs: detect
     if: needs.detect.outputs.has_changes == 'true'
-    runs-on: ubuntu-latest
-    environment: prod            # <-- promotion gate: required reviewers approve here
     strategy:
       fail-fast: false
       matrix:
         target: ${{ fromJson(needs.detect.outputs.matrix) }}
-    steps:
-      - name: "🚀 DUMMY DEPLOY (POC — replace with reusable-deploy)"
-        run: |
-          echo "=================================================="
-          echo " Deploying to PROD"
-          echo "   service : ${{ matrix.target.service }}"
-          echo "   version : ${{ matrix.target.version }}   (immutable digest)"
-          echo "   semver  : ${{ matrix.target.semver }}"
-          echo "--------------------------------------------------"
-          echo " (real pipeline) would call:"
-          echo "   reusable-deploy.yml  env=prod"
-          echo "     app_name=${{ matrix.target.service }}-prod"
-          echo "     image=<registry>/${{ matrix.target.service }}@${{ matrix.target.version }}"
-          echo "   -> deploy to staging slot -> smoke test -> swap"
-          echo "=================================================="
-          echo "✅ Released ${{ matrix.target.service }} ${{ matrix.target.semver }}"
+    # Delegates the actual prod deploy to the central reusable workflow — the
+    # SAME one the services use. The `prod` gate lives inside reusable-deploy-poc.
+    uses: mbeema/platform-pipelines/.github/workflows/reusable-deploy-poc.yml@v1
+    with:
+      environment: prod
+      app_name: ${{ matrix.target.service }}-prod
+      version: ${{ matrix.target.version }}
 
   # ---- Nothing changed: explain why we did nothing ----
   noop:
