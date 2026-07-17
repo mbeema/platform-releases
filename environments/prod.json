@@ -6,8 +6,8 @@
       "semver": "v0.1.0"
     },
     "payments": {
-      "version": "sha-9f8e7d6",
-      "semver": "v9.0.1"
+      "version": "sha-0d955e1",
+      "semver": "v0.1.1"
     },
     "inventory": {
       "version": "sha-4c5d6e7",
