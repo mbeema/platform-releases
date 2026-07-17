@@ -10,6 +10,9 @@
       "approved_at": "2026-07-17T18:52:10Z",
       "run_id": "29605406139",
       "approval_comment": "infra to staging"
+    },
+    "prod": {
+      "version": "sha-62c56b6"
     }
   }
 }
