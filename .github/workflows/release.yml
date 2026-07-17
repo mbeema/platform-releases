@@ -160,8 +160,12 @@ jobs:
   # did not happen, so there is nothing to certify.
   record-approval:
     needs: [select, deploy-container, deploy-zip]
+    # !cancelled() forces this to evaluate even though one deploy half is
+    # SKIPPED — without a status function, a skipped need would skip this job
+    # before the guards below are ever checked.
     if: >-
-      needs.select.outputs.has == 'true'
+      !cancelled()
+      && needs.select.outputs.has == 'true'
       && needs.deploy-container.result != 'failure'
       && needs.deploy-zip.result != 'failure'
     runs-on: ubuntu-latest
