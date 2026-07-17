@@ -1,0 +1,89 @@
+# =============================================================================
+# RELEASE — select services + target environment, ship with approvals
+# Repo: mbeema/platform-releases
+#
+# Run from the Actions tab. Choose which services and which environment
+# (staging or prod). It promotes those services from the environment below
+# (dev→staging or staging→prod), records the release commit, and deploys them
+# through the central pipeline — where the target Environment's required
+# reviewers must APPROVE before anything goes live.
+# =============================================================================
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      services:
+        description: "Services to release: comma-separated names, or 'all'"
+        required: true
+        default: "all"
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - prod
+        default: staging
+
+permissions:
+  contents: write
+
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.selected }}
+      has: ${{ steps.sel.outputs.has }}
+      source: ${{ steps.src.outputs.source }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve source environment
+        id: src
+        run: |
+          # promote up the chain: prod <- staging <- dev
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            echo "source=staging" >> "$GITHUB_OUTPUT"
+          else
+            echo "source=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Select & pin target ledger
+        id: sel
+        run: |
+          python3 scripts/select_release.py \
+            --from "environments/${{ steps.src.outputs.source }}.json" \
+            --to   "environments/${{ inputs.environment }}.json" \
+            --select "${{ inputs.services }}"
+
+      - name: Record the release
+        if: steps.sel.outputs.has == 'true'
+        run: |
+          git config user.name  "release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          git add "environments/${{ inputs.environment }}.json"
+          git commit -m "release(${{ inputs.environment }}): ${{ inputs.services }} from ${{ steps.src.outputs.source }}"
+          git push
+
+      - name: Nothing to release
+        if: steps.sel.outputs.has != 'true'
+        run: echo "No releasable services matched '${{ inputs.services }}' for ${{ inputs.environment }}."
+
+  # Deploy ONLY the selected services via the central pipeline.
+  # The `environment:` inside reusable-deploy-poc enforces the approval gate.
+  deploy:
+    needs: select
+    if: needs.select.outputs.has == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.select.outputs.matrix) }}
+    uses: mbeema/platform-pipelines/.github/workflows/reusable-deploy-poc.yml@v1
+    with:
+      environment: ${{ inputs.environment }}
+      app_name: ${{ matrix.target.service }}-${{ inputs.environment }}
+      version: ${{ matrix.target.version }}

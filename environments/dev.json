@@ -1,8 +1,8 @@
 {
-  "environment": "staging",
+  "environment": "dev",
   "services": {
-    "orders":        { "version": "sha-1d0e001", "semver": "v0.1.1" },
-    "payments":      { "version": "sha-1d0e002", "semver": "v0.1.1" },
+    "orders":        { "version": "sha-2d0e001", "semver": "v0.2.0", "commits": 5, "prs": 2, "verified": "2026-07-16" },
+    "payments":      { "version": "sha-2d0e002", "semver": "v0.2.0", "commits": 3, "prs": 1, "verified": "2026-07-16" },
     "inventory":     { "version": "sha-cc33dd4", "semver": "v2.3.0" },
     "catalog":       { "version": "sha-11aa22b", "semver": "v5.0.3" },
     "shipping":      { "version": "sha-77cc88d", "semver": "v1.0.0" },
