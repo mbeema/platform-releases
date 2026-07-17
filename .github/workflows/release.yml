@@ -172,12 +172,14 @@ jobs:
     needs: [select, deploy-container, deploy-zip]
     # !cancelled() forces this to evaluate even though one deploy half is
     # SKIPPED — without a status function, a skipped need would skip this job
-    # before the guards below are ever checked.
+    # before the guards below are ever checked. Then require that select
+    # actually committed the release and that at least one deploy SUCCEEDED:
+    # certify only a release that really happened, never one that failed after
+    # setting has=true or whose deploys were all skipped.
     if: >-
       !cancelled()
-      && needs.select.outputs.has == 'true'
-      && needs.deploy-container.result != 'failure'
-      && needs.deploy-zip.result != 'failure'
+      && needs.select.result == 'success'
+      && (needs.deploy-container.result == 'success' || needs.deploy-zip.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
