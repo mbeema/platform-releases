@@ -3,7 +3,10 @@
   "services": {
     "orders": {
       "version": "sha-92d6326",
-      "semver": "v0.1.5"
+      "semver": "v0.1.5",
+      "approved_by": "auto (no required reviewers)",
+      "approved_at": "2026-07-17T15:09:53Z",
+      "run_id": "29590968309"
     },
     "payments": {
       "version": "sha-2ecac68",
