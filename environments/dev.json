@@ -1,13 +1,40 @@
 {
   "environment": "dev",
   "services": {
-    "orders":        { "version": "sha-2d0e001", "semver": "v0.2.0", "commits": 5, "prs": 2, "verified": "2026-07-16" },
-    "payments":      { "version": "sha-2d0e002", "semver": "v0.2.0", "commits": 3, "prs": 1, "verified": "2026-07-16" },
-    "inventory":     { "version": "sha-cc33dd4", "semver": "v2.3.0" },
-    "catalog":       { "version": "sha-11aa22b", "semver": "v5.0.3" },
-    "shipping":      { "version": "sha-77cc88d", "semver": "v1.0.0" },
-    "notifications": { "version": "sha-33ee44f", "semver": "v4.4.4" },
-    "pricing":       { "version": "sha-dd55ee6", "semver": "v3.2.1" },
-    "auth":          { "version": "sha-99ab77c", "semver": "v7.2.1" }
+    "orders": {
+      "version": "sha-f0b279e",
+      "semver": "v0.1.4"
+    },
+    "payments": {
+      "version": "sha-2d0e002",
+      "semver": "v0.2.0",
+      "commits": 3,
+      "prs": 1,
+      "verified": "2026-07-16"
+    },
+    "inventory": {
+      "version": "sha-cc33dd4",
+      "semver": "v2.3.0"
+    },
+    "catalog": {
+      "version": "sha-11aa22b",
+      "semver": "v5.0.3"
+    },
+    "shipping": {
+      "version": "sha-77cc88d",
+      "semver": "v1.0.0"
+    },
+    "notifications": {
+      "version": "sha-33ee44f",
+      "semver": "v4.4.4"
+    },
+    "pricing": {
+      "version": "sha-dd55ee6",
+      "semver": "v3.2.1"
+    },
+    "auth": {
+      "version": "sha-99ab77c",
+      "semver": "v7.2.1"
+    }
   }
 }
