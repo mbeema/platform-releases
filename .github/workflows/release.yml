@@ -1,22 +1,18 @@
 # =============================================================================
-# RELEASE — select services + target environment, ship with approvals
+# RELEASE — the single release console for staging & prod
 # Repo: mbeema/platform-releases
 #
-# Run from the Actions tab. Choose which services and which environment
-# (staging or prod). It promotes those services from the environment below
-# (dev→staging or staging→prod), records the release commit, and deploys them
-# through the central pipeline — where the target Environment's required
-# reviewers must APPROVE before anything goes live.
+# Two ways to release, both gated by the target environment's required reviewers:
+#   • Promote (version blank): ship the latest build from the env below
+#     (dev→staging or staging→prod). Supports one, many, or 'all' services.
+#   • Pin a specific build (version set): release/redeploy an EXACT version of
+#     ONE service — e.g. promote a chosen build, or roll back to a known-good one.
 # =============================================================================
 name: release
 
 on:
   workflow_dispatch:
     inputs:
-      services:
-        description: "Services to release: comma-separated names, or 'all'"
-        required: true
-        default: "all"
       environment:
         description: "Target environment"
         required: true
@@ -25,6 +21,14 @@ on:
           - staging
           - prod
         default: staging
+      services:
+        description: "Service(s): one name, comma-list, or 'all'. For a specific version, name exactly ONE."
+        required: true
+        default: "all"
+      version:
+        description: "Specific build to release (a vX.Y.Z tag or sha-xxxxxxx). Blank = promote latest from the env below."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -35,30 +39,46 @@ jobs:
     outputs:
       matrix: ${{ steps.sel.outputs.selected }}
       has: ${{ steps.sel.outputs.has }}
-      source: ${{ steps.src.outputs.source }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Resolve source environment
-        id: src
-        run: |
-          # promote up the chain: prod <- staging <- dev
-          if [ "${{ inputs.environment }}" = "prod" ]; then
-            echo "source=staging" >> "$GITHUB_OUTPUT"
-          else
-            echo "source=dev" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Select & pin target ledger
+      - name: Resolve & pin target ledger
         id: sel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SVC: ${{ inputs.services }}
+          VER: ${{ inputs.version }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          python3 scripts/select_release.py \
-            --from "environments/${{ steps.src.outputs.source }}.json" \
-            --to   "environments/${{ inputs.environment }}.json" \
-            --select "${{ inputs.services }}"
+          set -e
+          if [ -n "$VER" ]; then
+            # ---- PIN a specific build (single service) ----
+            case "$SVC" in
+              *,*|all|ALL) echo "::error::a specific version needs exactly one service"; exit 1;;
+            esac
+            case "$VER" in
+              sha-*)
+                IMM="$VER"; SEMVER="" ;;
+              *)
+                # resolve a semver tag to its immutable build sha in the service repo
+                FULL="$(gh api "repos/mbeema/service-${SVC}/commits/${VER}" --jq .sha)"
+                IMM="sha-${FULL:0:7}"; SEMVER="$VER" ;;
+            esac
+            echo "Pinning ${SVC} -> ${IMM} (${SEMVER:-no semver}) in ${ENVIRONMENT}"
+            python3 scripts/select_release.py \
+              --to "environments/${ENVIRONMENT}.json" \
+              --select "$SVC" --version "$IMM" --semver "$SEMVER"
+          else
+            # ---- PROMOTE from the env below ----
+            if [ "$ENVIRONMENT" = "prod" ]; then SRC=staging; else SRC=dev; fi
+            echo "Promoting '$SVC' from ${SRC} to ${ENVIRONMENT}"
+            python3 scripts/select_release.py \
+              --to "environments/${ENVIRONMENT}.json" \
+              --from "environments/${SRC}.json" --select "$SVC"
+          fi
 
       - name: Record the release
         if: steps.sel.outputs.has == 'true'
@@ -66,15 +86,13 @@ jobs:
           git config user.name  "release-bot"
           git config user.email "release-bot@users.noreply.github.com"
           git add "environments/${{ inputs.environment }}.json"
-          git commit -m "release(${{ inputs.environment }}): ${{ inputs.services }} from ${{ steps.src.outputs.source }}"
+          git commit -m "release(${{ inputs.environment }}): ${{ inputs.services }} ${{ inputs.version }}"
           git push
 
       - name: Nothing to release
         if: steps.sel.outputs.has != 'true'
-        run: echo "No releasable services matched '${{ inputs.services }}' for ${{ inputs.environment }}."
+        run: echo "Nothing to release for '${{ inputs.services }}' → ${{ inputs.environment }}."
 
-  # Deploy ONLY the selected services via the central pipeline.
-  # The `environment:` inside reusable-deploy-poc enforces the approval gate.
   deploy:
     needs: select
     if: needs.select.outputs.has == 'true'
