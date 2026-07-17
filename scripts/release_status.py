@@ -47,31 +47,42 @@ def classify(prod, staging):
     return rows
 
 
-def staleness(verified, today):
-    if not verified:
+def staleness(approved_at, today):
+    """Age of the staging approval. Accepts an ISO date or datetime; the date
+    portion is what matters for staleness."""
+    if not approved_at:
         return ""
-    d = datetime.date.fromisoformat(verified)
+    d = datetime.date.fromisoformat(approved_at[:10])
     age = (today - d).days
     return f"⚠ stale {age}d" if age > STALE_DAYS else f"{age}d ago"
+
+
+def approver(cell):
+    """Who approved this staging pin. Blank when there is no record — e.g. a
+    seeded entry that never passed through the gate."""
+    if not cell:
+        return ""
+    by = cell.get("approved_by")
+    return "" if not by else ("auto" if by.startswith("auto") else f"@{by}")
 
 
 def render_table(rows, today):
     releasable = [r for r in rows if r["state"] == "RELEASABLE"]
     print("\n  RELEASE STATUS\n  " + "=" * 84)
-    print(f"  {'':2}{'SERVICE':<16}{'STATE':<12}{'PROD':<10}{'→ STAGING':<12}{'CHANGES':<18}{'VERIFIED'}")
+    print(f"  {'':2}{'SERVICE':<16}{'STATE':<12}{'PROD':<10}{'→ STAGING':<12}{'APPROVED BY':<16}{'APPROVED'}")
     print("  " + "-" * 84)
     for r in rows:
         s, p = r["staging"], r["prod"]
         pv = p["semver"] if p else "-"
         sv = s["semver"] if s else "-"
-        changes = ""
-        verified = ""
+        by = ""
+        approved = ""
         if r["state"] == "RELEASABLE" and s:
-            changes = f"{s.get('commits','?')} commits / {s.get('prs','?')} PRs"
-            verified = staleness(s.get("verified"), today)
+            by = approver(s)
+            approved = staleness(s.get("approved_at"), today)
         arrow = sv if r["state"] == "RELEASABLE" else ""
         marker = "► " if r["state"] == "RELEASABLE" else "  "
-        print(f"  {marker}{r['service']:<16}{r['state']:<12}{pv:<10}{arrow:<12}{changes:<18}{verified}")
+        print(f"  {marker}{r['service']:<16}{r['state']:<12}{pv:<10}{arrow:<12}{by:<16}{approved}")
     print("  " + "-" * 84)
     print(f"  {len(releasable)} releasable · {len(rows) - len(releasable)} in sync · {len(rows)} total\n")
 
@@ -81,19 +92,19 @@ def render_markdown(rows, today):
     out = ["## 🚦 Release Status", ""]
     out.append(f"**{len(releasable)} releasable** · {len(rows) - len(releasable)} in sync · {len(rows)} total")
     out.append("")
-    out.append("| Service | State | Prod | → Staging | Changes | Verified |")
+    out.append("| Service | State | Prod | → Staging | Approved by | Approved |")
     out.append("|---|---|---|---|---|---|")
     for r in rows:
         s, p = r["staging"], r["prod"]
         pv = p["semver"] if p else "-"
         if r["state"] == "RELEASABLE" and s:
             arrow = s["semver"]
-            changes = f"{s.get('commits','?')} commits / {s.get('prs','?')} PRs"
-            verified = staleness(s.get("verified"), today)
+            by = approver(s)
+            approved = staleness(s.get("approved_at"), today)
             state = "**RELEASABLE**"
         else:
-            arrow, changes, verified, state = "", "", "", r["state"]
-        out.append(f"| {r['service']} | {state} | {pv} | {arrow} | {changes} | {verified} |")
+            arrow, by, approved, state = "", "", "", r["state"]
+        out.append(f"| {r['service']} | {state} | {pv} | {arrow} | {by} | {approved} |")
     return "\n".join(out) + "\n"
 
 
