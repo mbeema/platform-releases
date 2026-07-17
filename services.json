@@ -1,17 +1,15 @@
 {
   "_comment": [
-    "SERVICE REGISTRY — what each service IS, not what was released.",
+    "SERVICE REGISTRY \u2014 what each service IS, not what was released.",
     "The environments/*.json ledgers record the released build (version/semver);",
     "this records the static facts a deploy needs to pick the right pipeline.",
     "Onboarding a new service = one entry here.",
     "",
-    "  type       container | zip  — selects reusable-deploy vs reusable-deploy-zip.",
+    "  type       container | zip  \u2014 selects reusable-deploy vs reusable-deploy-zip.",
     "  repo       owner/repo of the service; deploys check this out at the",
     "             released sha so code, migrations and settings share one pin.",
     "  image_name container only: the ACR repository path.",
-    "  app_type   zip only: webapp | functionapp.",
-    "",
-    "Services below without a real repo are seeded POC entries."
+    "  app_type   zip only: webapp | functionapp."
   ],
   "services": {
     "orders": {
@@ -23,36 +21,6 @@
       "type": "zip",
       "repo": "mbeema/service-payments",
       "app_type": "functionapp"
-    },
-    "inventory": {
-      "type": "container",
-      "repo": "mbeema/service-inventory",
-      "image_name": "inventory"
-    },
-    "catalog": {
-      "type": "container",
-      "repo": "mbeema/service-catalog",
-      "image_name": "catalog"
-    },
-    "shipping": {
-      "type": "container",
-      "repo": "mbeema/service-shipping",
-      "image_name": "shipping"
-    },
-    "notifications": {
-      "type": "container",
-      "repo": "mbeema/service-notifications",
-      "image_name": "notifications"
-    },
-    "pricing": {
-      "type": "container",
-      "repo": "mbeema/service-pricing",
-      "image_name": "pricing"
-    },
-    "auth": {
-      "type": "container",
-      "repo": "mbeema/service-auth",
-      "image_name": "auth"
     }
   }
 }

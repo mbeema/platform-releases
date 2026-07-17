@@ -12,30 +12,6 @@
     "payments": {
       "version": "sha-2ecac68",
       "semver": "v0.1.2"
-    },
-    "inventory": {
-      "version": "sha-cc33dd4",
-      "semver": "v2.3.0"
-    },
-    "catalog": {
-      "version": "sha-11aa22b",
-      "semver": "v5.0.3"
-    },
-    "shipping": {
-      "version": "sha-77cc88d",
-      "semver": "v1.0.0"
-    },
-    "notifications": {
-      "version": "sha-33ee44f",
-      "semver": "v4.4.4"
-    },
-    "pricing": {
-      "version": "sha-dd55ee6",
-      "semver": "v3.2.1"
-    },
-    "auth": {
-      "version": "sha-99ab77c",
-      "semver": "v7.2.1"
     }
   }
 }
