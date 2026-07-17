@@ -16,6 +16,17 @@ import os
 
 ENVS = ["dev", "staging", "prod"]
 
+# Base URL for a workflow run, e.g. https://github.com/<owner>/<repo>/actions/runs
+# Set in main() from --run-url-base or the GITHUB_* env the Actions runner
+# provides. None → approver text renders without a link (e.g. a local run).
+RUN_URL_BASE = None
+
+
+def run_url(run_id):
+    if RUN_URL_BASE and run_id:
+        return f"{RUN_URL_BASE}/{run_id}"
+    return None
+
 
 def load(env, base):
     with open(os.path.join(base, f"{env}.json")) as f:
@@ -106,6 +117,9 @@ STYLE = """
   .rct .appr .when{color:var(--muted);font-weight:500}
   .rct .appr.auto{color:var(--muted);font-weight:500}
   .rct .appr.auto::before{content:"\25cb\00a0"}
+  .rct a.appr{text-decoration:none}
+  .rct a.appr:hover .who{text-decoration:underline}
+  .rct a.appr:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
   .rct .foot{margin-top:16px;font-size:12px;color:var(--muted)}
   .rct .foot b{color:var(--ink);font-weight:600}
 </style>
@@ -124,15 +138,21 @@ def approval_html(cell):
     tip = []
     if cell.get("approved_at"):
         tip.append(f"approved {cell['approved_at']}")
-    if cell.get("run_id"):
-        tip.append(f"run {cell['run_id']}")
     if cell.get("approval_comment"):
         tip.append(f"“{cell['approval_comment']}”")
+    url = run_url(cell.get("run_id"))
+    if url:
+        tip.append("click to open run " + str(cell["run_id"]))
     title = html.escape(" · ".join(tip), quote=True)
     when_html = f'<span class="when"> · {when}</span>' if when else ""
+    inner = f'<span class="who">{html.escape(who)}</span>{when_html}'
     cls = "appr auto" if auto else "appr"
-    return (f'<span class="{cls}" title="{title}">'
-            f'<span class="who">{html.escape(who)}</span>{when_html}</span>')
+    # A native title tooltip is plain text — it cannot hold a link — so the whole
+    # approver line becomes the link to the run instead.
+    if url:
+        return (f'<a class="{cls}" href="{html.escape(url, quote=True)}" '
+                f'title="{title}" target="_blank" rel="noopener">{inner}</a>')
+    return f'<span class="{cls}" title="{title}">{inner}</span>'
 
 
 def cell_html(cell, newest):
@@ -179,6 +199,9 @@ def cell_md(cell):
     by = cell.get("approved_by")
     if by:
         who = "auto" if by.startswith("auto") else f"@{by}"
+        url = run_url(cell.get("run_id"))
+        if url:
+            who = f"[{who}]({url})"
         when = (cell.get("approved_at") or "")[:10]
         text += f"<br>✓ {who}{(' · ' + when) if when else ''}"
     return text
@@ -201,7 +224,17 @@ def main():
     ap.add_argument("--fragment", default=None)
     ap.add_argument("--standalone", default=None)
     ap.add_argument("--generated", default=None)
+    ap.add_argument("--run-url-base", default=None,
+                    help="Base URL for a run link; defaults to the Actions GITHUB_* env.")
     a = ap.parse_args()
+
+    global RUN_URL_BASE
+    RUN_URL_BASE = a.run_url_base
+    if not RUN_URL_BASE:
+        server = os.environ.get("GITHUB_SERVER_URL")
+        repo = os.environ.get("GITHUB_REPOSITORY")
+        if server and repo:
+            RUN_URL_BASE = f"{server}/{repo}/actions/runs"
 
     generated = a.generated or datetime.date.today().isoformat()
     rows = build_rows(a.base)
