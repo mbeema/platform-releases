@@ -3,7 +3,11 @@
   "services": {
     "orders": {
       "version": "sha-92d6326",
-      "semver": "v0.1.5"
+      "semver": "v0.1.5",
+      "approved_by": "mbeema",
+      "approved_at": "2026-07-17T15:15:04Z",
+      "run_id": "29591318093",
+      "approval_comment": "final e2e: v0.1.5 rollback approved"
     },
     "payments": {
       "version": "sha-2ecac68",
