@@ -99,8 +99,18 @@ jobs:
           git config user.name  "release-bot"
           git config user.email "release-bot@users.noreply.github.com"
           git add "environments/${{ inputs.environment }}.json"
-          git commit -m "release(${{ inputs.environment }}): ${{ inputs.services }} ${{ inputs.version }}"
-          git push
+          # A re-pin of the current build (a redeploy or rollback to what is
+          # already live) changes no bytes. That is a valid release, not an
+          # error — skip the commit but let the deploy proceed.
+          if git diff --cached --quiet; then
+            echo "Ledger already at this pin — redeploy with no ledger change."
+          else
+            git commit -m "release(${{ inputs.environment }}): ${{ inputs.services }} ${{ inputs.version }}"
+            for i in $(seq 1 5); do
+              git pull --rebase --autostash origin main && git push origin HEAD:main && break
+              echo "push retry $i"; sleep 3
+            done
+          fi
 
       - name: Nothing to release
         if: steps.sel.outputs.has != 'true'
