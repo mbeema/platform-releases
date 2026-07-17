@@ -11,7 +11,11 @@
     },
     "payments": {
       "version": "sha-2ecac68",
-      "semver": "v0.1.2"
+      "semver": "v0.1.2",
+      "approved_by": "mbeema",
+      "approved_at": "2026-07-17T16:35:58Z",
+      "run_id": "29596777650",
+      "approval_comment": "backfill staging provenance for payments"
     }
   }
 }
