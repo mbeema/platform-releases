@@ -6,12 +6,8 @@
       "semver": "v0.1.6"
     },
     "staging": {
-      "version": "sha-1a03ff9",
-      "semver": "v0.1.6",
-      "approved_by": "mbeema",
-      "approved_at": "2026-07-17T15:51:49Z",
-      "run_id": "29593835155",
-      "approval_comment": "promote all to staging"
+      "version": "sha-92d6326",
+      "semver": "v0.1.5"
     },
     "prod": {
       "version": "sha-1a03ff9",
