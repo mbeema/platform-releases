@@ -3,6 +3,9 @@
   "environments": {
     "dev": {
       "version": "sha-62c56b6"
+    },
+    "staging": {
+      "version": "sha-62c56b6"
     }
   }
 }
