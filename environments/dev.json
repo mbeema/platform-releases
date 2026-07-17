@@ -6,11 +6,8 @@
       "semver": "v0.1.4"
     },
     "payments": {
-      "version": "sha-2d0e002",
-      "semver": "v0.2.0",
-      "commits": 3,
-      "prs": 1,
-      "verified": "2026-07-16"
+      "version": "sha-2ecac68",
+      "semver": "v0.1.2"
     },
     "inventory": {
       "version": "sha-cc33dd4",
