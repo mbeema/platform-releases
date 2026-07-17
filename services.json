@@ -21,6 +21,10 @@
       "type": "zip",
       "repo": "mbeema/service-payments",
       "app_type": "functionapp"
+    },
+    "platform-infra": {
+      "type": "infra",
+      "repo": "mbeema/platform-infra"
     }
   }
 }

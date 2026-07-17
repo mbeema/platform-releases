@@ -27,7 +27,7 @@ def main():
     with open(a.registry) as f:
         registry = json.load(f)["services"]
 
-    buckets = {"container": [], "zip": []}
+    buckets = {"container": [], "zip": [], "infra": []}
     for item in selected:
         name = item["service"]
         meta = registry.get(name)
@@ -40,7 +40,7 @@ def main():
         stype = meta.get("type")
         if stype not in buckets:
             print(f"::error::'{name}' has type '{stype}' in {a.registry}; "
-                  f"expected 'container' or 'zip'.", file=sys.stderr)
+                  f"expected one of {sorted(buckets)}.", file=sys.stderr)
             sys.exit(1)
         buckets[stype].append({**item, **meta})
 
