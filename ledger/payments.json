@@ -1,0 +1,25 @@
+{
+  "service": "payments",
+  "environments": {
+    "dev": {
+      "version": "sha-2ecac68",
+      "semver": "v0.1.2"
+    },
+    "staging": {
+      "version": "sha-2ecac68",
+      "semver": "v0.1.2",
+      "approved_by": "mbeema",
+      "approved_at": "2026-07-17T16:35:58Z",
+      "run_id": "29596777650",
+      "approval_comment": "backfill staging provenance for payments"
+    },
+    "prod": {
+      "version": "sha-2ecac68",
+      "semver": "v0.1.2",
+      "approved_by": "mbeema",
+      "approved_at": "2026-07-17T15:59:36Z",
+      "run_id": "29594074912",
+      "approval_comment": "promote all to prod"
+    }
+  }
+}

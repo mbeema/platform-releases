@@ -22,12 +22,9 @@ import json
 import os
 import sys
 
+import ledger
+
 STALE_DAYS = 7
-
-
-def load(path):
-    with open(path) as f:
-        return json.load(f)["services"]
 
 
 def classify(prod, staging):
@@ -110,15 +107,13 @@ def render_markdown(rows, today):
 
 def main():
     ap = argparse.ArgumentParser()
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ap.add_argument("--prod", default=os.path.join(here, "environments", "prod.json"))
-    ap.add_argument("--staging", default=os.path.join(here, "environments", "staging.json"))
     ap.add_argument("--format", choices=["table", "markdown", "json"], default="table")
     ap.add_argument("--today", default=None, help="ISO date to treat as today (staleness).")
+    ap.add_argument("--base", default=None, help="ledger dir override (tests)")
     args = ap.parse_args()
 
     today = datetime.date.fromisoformat(args.today) if args.today else datetime.date.today()
-    rows = classify(load(args.prod), load(args.staging))
+    rows = classify(ledger.env_map("prod", args.base), ledger.env_map("staging", args.base))
 
     if args.format == "json":
         print(json.dumps([r for r in rows if r["state"] == "RELEASABLE"], indent=2))

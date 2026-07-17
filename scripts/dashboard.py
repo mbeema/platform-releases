@@ -11,10 +11,11 @@ Emits:
 import argparse
 import datetime
 import html
-import json
 import os
 
-ENVS = ["dev", "staging", "prod"]
+import ledger
+
+ENVS = ledger.ENVS
 
 # Base URL for a workflow run, e.g. https://github.com/<owner>/<repo>/actions/runs
 # Set in main() from --run-url-base or the GITHUB_* env the Actions runner
@@ -28,13 +29,8 @@ def run_url(run_id):
     return None
 
 
-def load(env, base):
-    with open(os.path.join(base, f"{env}.json")) as f:
-        return json.load(f)["services"]
-
-
 def build_rows(base):
-    ledgers = {e: load(e, base) for e in ENVS}
+    ledgers = {e: ledger.env_map(e, base) for e in ENVS}
     names = sorted(set().union(*[set(l) for l in ledgers.values()]))
     rows = []
     for n in names:
@@ -219,8 +215,7 @@ def render_markdown(rows):
 
 def main():
     ap = argparse.ArgumentParser()
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ap.add_argument("--base", default=os.path.join(here, "environments"))
+    ap.add_argument("--base", default=None, help="ledger dir override; default = repo ledger/")
     ap.add_argument("--fragment", default=None)
     ap.add_argument("--standalone", default=None)
     ap.add_argument("--generated", default=None)

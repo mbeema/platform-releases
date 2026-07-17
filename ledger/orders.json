@@ -1,0 +1,25 @@
+{
+  "service": "orders",
+  "environments": {
+    "dev": {
+      "version": "sha-1a03ff9",
+      "semver": "v0.1.6"
+    },
+    "staging": {
+      "version": "sha-1a03ff9",
+      "semver": "v0.1.6",
+      "approved_by": "mbeema",
+      "approved_at": "2026-07-17T15:51:49Z",
+      "run_id": "29593835155",
+      "approval_comment": "promote all to staging"
+    },
+    "prod": {
+      "version": "sha-1a03ff9",
+      "semver": "v0.1.6",
+      "approved_by": "mbeema",
+      "approved_at": "2026-07-17T15:59:36Z",
+      "run_id": "29594074912",
+      "approval_comment": "promote all to prod"
+    }
+  }
+}

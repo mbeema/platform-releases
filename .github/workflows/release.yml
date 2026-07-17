@@ -74,15 +74,15 @@ jobs:
             esac
             echo "Pinning ${SVC} -> ${IMM} (${SEMVER:-no semver}) in ${ENVIRONMENT}"
             python3 scripts/select_release.py \
-              --to "environments/${ENVIRONMENT}.json" \
+              --to-env "${ENVIRONMENT}" \
               --select "$SVC" --version "$IMM" --semver "$SEMVER"
           else
             # ---- PROMOTE from the env below ----
             if [ "$ENVIRONMENT" = "prod" ]; then SRC=staging; else SRC=dev; fi
             echo "Promoting '$SVC' from ${SRC} to ${ENVIRONMENT}"
             python3 scripts/select_release.py \
-              --to "environments/${ENVIRONMENT}.json" \
-              --from "environments/${SRC}.json" --select "$SVC"
+              --to-env "${ENVIRONMENT}" \
+              --from-env "${SRC}" --select "$SVC"
           fi
 
       # Route each selected service to its pipeline BEFORE recording the
@@ -98,7 +98,7 @@ jobs:
         run: |
           git config user.name  "release-bot"
           git config user.email "release-bot@users.noreply.github.com"
-          git add "environments/${{ inputs.environment }}.json"
+          git add ledger
           # A re-pin of the current build (a redeploy or rollback to what is
           # already live) changes no bytes. That is a valid release, not an
           # error — skip the commit but let the deploy proceed.
@@ -214,26 +214,24 @@ jobs:
           echo "Approved by ${BY} at ${AT:-unknown}"
 
       - name: Stamp approval onto the ledger and commit
-        env:
-          LEDGER: environments/${{ inputs.environment }}.json
         run: |
           git config user.name  "release-bot"
           git config user.email "release-bot@users.noreply.github.com"
           # Re-derive the stamp against the CURRENT tip each attempt, rather than
           # rebasing our own commit: select pushed the version bump onto the same
-          # file moments ago, and rebasing would conflict. Recomputing is
+          # files moments ago, and rebasing would conflict. Recomputing is
           # idempotent and conflict-free.
           for i in $(seq 1 5); do
             git fetch -q origin main
             git reset -q --hard origin/main
             python3 scripts/stamp_approval.py \
-              --file "$LEDGER" \
+              --env "${{ inputs.environment }}" \
               --selected '${{ needs.select.outputs.matrix }}' \
               --approved-by "${{ steps.appr.outputs.by }}" \
               --approved-at "${{ steps.appr.outputs.at }}" \
               --run-id "${{ github.run_id }}" \
               --comment "${{ steps.appr.outputs.comment }}"
-            git add "$LEDGER"
+            git add ledger
             if git diff --cached --quiet; then
               echo "Approval already recorded at tip — nothing to commit."; exit 0
             fi
