@@ -2,12 +2,12 @@
   "environment": "staging",
   "services": {
     "orders": {
-      "version": "sha-92d6326",
-      "semver": "v0.1.5"
+      "version": "sha-1a03ff9",
+      "semver": "v0.1.6"
     },
     "payments": {
-      "version": "sha-2d0e002",
-      "semver": "v0.2.0"
+      "version": "sha-2ecac68",
+      "semver": "v0.1.2"
     },
     "inventory": {
       "version": "sha-cc33dd4",
