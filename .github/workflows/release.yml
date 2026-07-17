@@ -213,26 +213,32 @@ jobs:
           echo "comment=$COMMENT" >> "$GITHUB_OUTPUT"
           echo "Approved by ${BY} at ${AT:-unknown}"
 
-      - name: Stamp approval onto the ledger
-        run: |
-          python3 scripts/stamp_approval.py \
-            --file "environments/${{ inputs.environment }}.json" \
-            --selected '${{ needs.select.outputs.matrix }}' \
-            --approved-by "${{ steps.appr.outputs.by }}" \
-            --approved-at "${{ steps.appr.outputs.at }}" \
-            --run-id "${{ github.run_id }}" \
-            --comment "${{ steps.appr.outputs.comment }}"
-
-      - name: Commit the approval record
+      - name: Stamp approval onto the ledger and commit
+        env:
+          LEDGER: environments/${{ inputs.environment }}.json
         run: |
           git config user.name  "release-bot"
           git config user.email "release-bot@users.noreply.github.com"
-          git add "environments/${{ inputs.environment }}.json"
-          git diff --cached --quiet && { echo "No approval change to record."; exit 0; }
-          git commit -m "approve(${{ inputs.environment }}): ${{ inputs.services }} by ${{ steps.appr.outputs.by }}"
-          # select pushed the version bump moments ago; rebase onto it before pushing.
+          # Re-derive the stamp against the CURRENT tip each attempt, rather than
+          # rebasing our own commit: select pushed the version bump onto the same
+          # file moments ago, and rebasing would conflict. Recomputing is
+          # idempotent and conflict-free.
           for i in $(seq 1 5); do
-            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            python3 scripts/stamp_approval.py \
+              --file "$LEDGER" \
+              --selected '${{ needs.select.outputs.matrix }}' \
+              --approved-by "${{ steps.appr.outputs.by }}" \
+              --approved-at "${{ steps.appr.outputs.at }}" \
+              --run-id "${{ github.run_id }}" \
+              --comment "${{ steps.appr.outputs.comment }}"
+            git add "$LEDGER"
+            if git diff --cached --quiet; then
+              echo "Approval already recorded at tip — nothing to commit."; exit 0
+            fi
+            git commit -m "approve(${{ inputs.environment }}): ${{ inputs.services }} by ${{ steps.appr.outputs.by }}"
+            git push origin HEAD:main && exit 0
             echo "push retry $i"; sleep 3
           done
           echo "::error::could not push approval record after retries"; exit 1
