@@ -1,0 +1,29 @@
+# =============================================================================
+# RELEASE STATUS — "which of the N services are releasable right now?"
+# Repo: mbeema/platform-releases
+#
+# Diffs staging.json vs prod.json and posts a report. Run on a schedule (a
+# standing "what's ready to ship" board) or on demand. Read-only; no deploys.
+# =============================================================================
+name: release-status
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 8 * * 1-5"   # weekday mornings, UTC
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Prints the table to the log AND writes a markdown table to the job summary.
+      - name: Compute release status
+        run: python3 scripts/release_status.py --format markdown

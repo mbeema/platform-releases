@@ -1,0 +1,82 @@
+# =============================================================================
+# PROMOTE — release the services whose pin changed in prod.json
+# Repo: mbeema/platform-releases
+#
+# The RELEASE ACTION is a PR that bumps a service's version in prod.json.
+# When it merges, this pipeline detects EXACTLY which services changed and
+# "deploys" only those. Deploy here is a DUMMY step (POC) — in real life it
+# calls the reusable-deploy workflow (slot swap) with the pinned digest.
+# =============================================================================
+name: promote
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "environments/prod.json"
+  workflow_dispatch:   # manual re-run
+
+permissions:
+  contents: read
+
+jobs:
+  # ---- Figure out which services' pins actually changed in this commit ----
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.diff.outputs.matrix }}
+      has_changes: ${{ steps.diff.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # need the previous commit to diff against
+
+      - name: Diff prod ledger
+        id: diff
+        run: |
+          # Previous version of the ledger (empty on first commit).
+          git show HEAD^:environments/prod.json > /tmp/old_prod.json 2>/dev/null || echo '{"services":{}}' > /tmp/old_prod.json
+          MATRIX="$(python3 scripts/changed_services.py /tmp/old_prod.json environments/prod.json)"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          if [ "$MATRIX" = "[]" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No pin changes detected."
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "Releasing: $MATRIX"
+          fi
+
+  # ---- Deploy ONLY the changed services, in parallel ----
+  release:
+    needs: detect
+    if: needs.detect.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    environment: prod            # <-- promotion gate: required reviewers approve here
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.detect.outputs.matrix) }}
+    steps:
+      - name: "🚀 DUMMY DEPLOY (POC — replace with reusable-deploy)"
+        run: |
+          echo "=================================================="
+          echo " Deploying to PROD"
+          echo "   service : ${{ matrix.target.service }}"
+          echo "   version : ${{ matrix.target.version }}   (immutable digest)"
+          echo "   semver  : ${{ matrix.target.semver }}"
+          echo "--------------------------------------------------"
+          echo " (real pipeline) would call:"
+          echo "   reusable-deploy.yml  env=prod"
+          echo "     app_name=${{ matrix.target.service }}-prod"
+          echo "     image=<registry>/${{ matrix.target.service }}@${{ matrix.target.version }}"
+          echo "   -> deploy to staging slot -> smoke test -> swap"
+          echo "=================================================="
+          echo "✅ Released ${{ matrix.target.service }} ${{ matrix.target.semver }}"
+
+  # ---- Nothing changed: explain why we did nothing ----
+  noop:
+    needs: detect
+    if: needs.detect.outputs.has_changes == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "prod.json touched but no service version changed — nothing to release."
