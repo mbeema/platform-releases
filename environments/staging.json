@@ -2,8 +2,8 @@
   "environment": "staging",
   "services": {
     "orders": {
-      "version": "sha-cfd56e5",
-      "semver": "v0.1.0",
+      "version": "sha-292d99a",
+      "semver": "v0.1.1",
       "verified": "2026-07-17"
     },
     "payments": {
