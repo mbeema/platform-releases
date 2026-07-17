@@ -152,3 +152,71 @@ jobs:
       environment: ${{ inputs.environment }}
       app_name: ${{ matrix.target.service }}-${{ inputs.environment }}
       version: ${{ matrix.target.version }}
+
+  # Governance record: WHO released the gate and WHEN. This can only run after
+  # the deploys, because approval happens at the gate inside them — it is not
+  # known at release time, when the version bump is committed. A skipped deploy
+  # (that half of the matrix was empty) is fine; a FAILED one means the release
+  # did not happen, so there is nothing to certify.
+  record-approval:
+    needs: [select, deploy-container, deploy-zip]
+    if: >-
+      needs.select.outputs.has == 'true'
+      && needs.deploy-container.result != 'failure'
+      && needs.deploy-zip.result != 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Gather approver and approval time
+        id: appr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -e
+          RID=${{ github.run_id }}
+          # WHO: the reviewer(s) who approved THIS environment's gate.
+          BY="$(gh api "repos/${{ github.repository }}/actions/runs/${RID}/approvals" \
+                --jq "[.[] | select(.state==\"approved\") \
+                        | select(any(.environments[]; .name==\"${ENVIRONMENT}\")) \
+                        | .user.login] | unique | join(\",\")")"
+          # A gate with no required reviewers auto-approves and returns nobody.
+          [ -z "$BY" ] && BY="auto (no required reviewers)"
+          # WHEN: the moment the gate released == the earliest deploy job start.
+          AT="$(gh api "repos/${{ github.repository }}/actions/runs/${RID}/jobs" \
+                --jq '[.jobs[] | select(.name|startswith("deploy-")) | .started_at]
+                       | map(select(.!=null)) | sort | .[0] // ""')"
+          COMMENT="$(gh api "repos/${{ github.repository }}/actions/runs/${RID}/approvals" \
+                --jq "[.[] | select(.state==\"approved\") | .comment] | map(select(.!=\"\")) | first // \"\"")"
+          echo "by=$BY"   >> "$GITHUB_OUTPUT"
+          echo "at=$AT"   >> "$GITHUB_OUTPUT"
+          echo "comment=$COMMENT" >> "$GITHUB_OUTPUT"
+          echo "Approved by ${BY} at ${AT:-unknown}"
+
+      - name: Stamp approval onto the ledger
+        run: |
+          python3 scripts/stamp_approval.py \
+            --file "environments/${{ inputs.environment }}.json" \
+            --selected '${{ needs.select.outputs.matrix }}' \
+            --approved-by "${{ steps.appr.outputs.by }}" \
+            --approved-at "${{ steps.appr.outputs.at }}" \
+            --run-id "${{ github.run_id }}" \
+            --comment "${{ steps.appr.outputs.comment }}"
+
+      - name: Commit the approval record
+        run: |
+          git config user.name  "release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          git add "environments/${{ inputs.environment }}.json"
+          git diff --cached --quiet && { echo "No approval change to record."; exit 0; }
+          git commit -m "approve(${{ inputs.environment }}): ${{ inputs.services }} by ${{ steps.appr.outputs.by }}"
+          # select pushed the version bump moments ago; rebase onto it before pushing.
+          for i in $(seq 1 5); do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            echo "push retry $i"; sleep 3
+          done
+          echo "::error::could not push approval record after retries"; exit 1
