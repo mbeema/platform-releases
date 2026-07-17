@@ -10,6 +10,7 @@ Emits:
 """
 import argparse
 import datetime
+import html
 import json
 import os
 
@@ -98,10 +99,40 @@ STYLE = """
   .rct .pill::before{content:"";width:7px;height:7px;border-radius:50%}
   .rct .pill.good{background:var(--good-bg);color:var(--good)} .rct .pill.good::before{background:var(--good)}
   .rct .pill.warn{background:var(--warn-bg);color:var(--warn)} .rct .pill.warn::before{background:var(--warn)}
+  .rct .appr{display:block;margin-top:5px;font-size:11px;color:var(--good);font-weight:600;
+    white-space:nowrap;cursor:default}
+  .rct .appr::before{content:"\2713\00a0"}
+  .rct .appr .who{font-variant-numeric:tabular-nums}
+  .rct .appr .when{color:var(--muted);font-weight:500}
+  .rct .appr.auto{color:var(--muted);font-weight:500}
+  .rct .appr.auto::before{content:"\25cb\00a0"}
   .rct .foot{margin-top:16px;font-size:12px;color:var(--muted)}
   .rct .foot b{color:var(--ink);font-weight:600}
 </style>
 """
+
+
+def approval_html(cell):
+    """The who/when line under a cell. Empty when nothing approved this pin
+    (e.g. dev, which is fed by CI with no gate)."""
+    by = cell.get("approved_by")
+    if not by:
+        return ""
+    auto = by.startswith("auto")
+    who = "auto" if auto else f"@{by}"
+    when = (cell.get("approved_at") or "")[:10]
+    tip = []
+    if cell.get("approved_at"):
+        tip.append(f"approved {cell['approved_at']}")
+    if cell.get("run_id"):
+        tip.append(f"run {cell['run_id']}")
+    if cell.get("approval_comment"):
+        tip.append(f"“{cell['approval_comment']}”")
+    title = html.escape(" · ".join(tip), quote=True)
+    when_html = f'<span class="when"> · {when}</span>' if when else ""
+    cls = "appr auto" if auto else "appr"
+    return (f'<span class="{cls}" title="{title}">'
+            f'<span class="who">{html.escape(who)}</span>{when_html}</span>')
 
 
 def cell_html(cell, newest):
@@ -109,7 +140,7 @@ def cell_html(cell, newest):
         return '<td class="cell empty">—</td>'
     behind = " behind" if newest and cell["version"] != newest else ""
     return (f'<td class="cell{behind}"><span class="ver">{cell.get("semver","?")}</span>'
-            f'<span class="sha">{cell["version"]}</span></td>')
+            f'<span class="sha">{cell["version"]}</span>{approval_html(cell)}</td>')
 
 
 def render_inner(rows, generated):
@@ -135,16 +166,29 @@ def render_inner(rows, generated):
         body.append(f'<tr><td class="svc">{r["name"]}</td>{cells}<td>{status}</td></tr>')
     body.append('</tbody></table></div>')
     body.append(f'<p class="foot">Generated <b>{generated}</b> · source of truth: '
-                'platform-releases ledgers · amber = behind the latest build</p>')
+                'platform-releases ledgers · amber = behind the latest build · '
+                '&#10003; = approved by (hover for time &amp; run)</p>')
     body.append('</div>')
     return "\n".join(body)
+
+
+def cell_md(cell):
+    if not cell:
+        return "—"
+    text = cell.get("semver") or cell["version"]
+    by = cell.get("approved_by")
+    if by:
+        who = "auto" if by.startswith("auto") else f"@{by}"
+        when = (cell.get("approved_at") or "")[:10]
+        text += f"<br>✓ {who}{(' · ' + when) if when else ''}"
+    return text
 
 
 def render_markdown(rows):
     out = ["## Release Control Tower", "", "| Service | Dev | Staging | Prod | Status |",
            "|---|---|---|---|---|"]
     for r in rows:
-        c = {e: (r["cells"][e]["semver"] if r["cells"][e] else "—") for e in ENVS}
+        c = {e: cell_md(r["cells"][e]) for e in ENVS}
         status = "✅ Rolled out" if r["rolled_out"] else "🟡 Promoting"
         out.append(f'| {r["name"]} | {c["dev"]} | {c["staging"]} | {c["prod"]} | {status} |')
     return "\n".join(out) + "\n"
