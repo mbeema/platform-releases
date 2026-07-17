@@ -1,0 +1,8 @@
+{
+  "service": "platform-infra",
+  "environments": {
+    "dev": {
+      "version": "sha-62c56b6"
+    }
+  }
+}
