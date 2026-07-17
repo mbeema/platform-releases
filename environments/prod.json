@@ -3,11 +3,19 @@
   "services": {
     "orders": {
       "version": "sha-1a03ff9",
-      "semver": "v0.1.6"
+      "semver": "v0.1.6",
+      "approved_by": "mbeema",
+      "approved_at": "2026-07-17T15:59:36Z",
+      "run_id": "29594074912",
+      "approval_comment": "promote all to prod"
     },
     "payments": {
       "version": "sha-2ecac68",
-      "semver": "v0.1.2"
+      "semver": "v0.1.2",
+      "approved_by": "mbeema",
+      "approved_at": "2026-07-17T15:59:36Z",
+      "run_id": "29594074912",
+      "approval_comment": "promote all to prod"
     }
   }
 }
