@@ -31,7 +31,8 @@ on:
         default: ""
 
 permissions:
-  contents: write
+  contents: write     # the ledger commit IS the release record
+  id-token: write     # OIDC for the real deploy pipelines (capped by the caller)
 
 jobs:
   select:
@@ -39,6 +40,10 @@ jobs:
     outputs:
       matrix: ${{ steps.sel.outputs.selected }}
       has: ${{ steps.sel.outputs.has }}
+      matrix_container: ${{ steps.split.outputs.matrix_container }}
+      has_container: ${{ steps.split.outputs.has_container }}
+      matrix_zip: ${{ steps.split.outputs.matrix_zip }}
+      has_zip: ${{ steps.split.outputs.has_zip }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -80,6 +85,14 @@ jobs:
               --from "environments/${SRC}.json" --select "$SVC"
           fi
 
+      # Route each selected service to its pipeline BEFORE recording the
+      # release: an unregistered service fails here, leaving the ledger clean.
+      - name: Route to deploy pipelines
+        id: split
+        if: steps.sel.outputs.has == 'true'
+        run: |
+          python3 scripts/split_matrix.py --selected '${{ steps.sel.outputs.selected }}'
+
       - name: Record the release
         if: steps.sel.outputs.has == 'true'
         run: |
@@ -93,13 +106,47 @@ jobs:
         if: steps.sel.outputs.has != 'true'
         run: echo "Nothing to release for '${{ inputs.services }}' → ${{ inputs.environment }}."
 
-  deploy:
+  # Two jobs, not one: a reusable-workflow `uses:` cannot be selected by a
+  # matrix expression, so container and zip services route separately.
+
+  deploy-container:
     needs: select
-    if: needs.select.outputs.has == 'true'
+    if: needs.select.outputs.has_container == 'true'
+    strategy:
+      fail-fast: false     # one service failing must not strand the others
+      matrix:
+        target: ${{ fromJson(needs.select.outputs.matrix_container) }}
+    # POC: swap to reusable-deploy.yml@v1 to go live. The `with:` block below is
+    # already the real one — both workflows take the same inputs — so going live
+    # is this one line plus Azure OIDC/ACR/Key Vault access.
+    uses: mbeema/platform-pipelines/.github/workflows/reusable-deploy-poc.yml@v1
+    with:
+      environment: ${{ inputs.environment }}
+      app_name: ${{ matrix.target.service }}-${{ inputs.environment }}
+      resource_group: rg-platform-${{ inputs.environment }}
+      version: ${{ matrix.target.version }}
+      # The ledger's sha IS the image tag — the same build promoted, never rebuilt.
+      image: ${{ vars.ACR_LOGIN_SERVER }}/${{ matrix.target.image_name }}:${{ matrix.target.version }}
+      # ...and the same sha checks out the service's changelog + settings, so one
+      # pin covers code, migrations and config together.
+      service_repo: ${{ matrix.target.repo }}
+      ref: ${{ matrix.target.version }}
+    secrets: inherit
+
+  # STILL ON THE POC PIPELINE — deliberately.
+  # reusable-deploy-zip.yml begins with actions/download-artifact, and artifacts
+  # are scoped to the run that produced them. Promoting from platform-releases
+  # cannot reach a zip built in the service repo's own run, so wiring this to the
+  # real workflow would fail at download-artifact every time. Unblock by giving
+  # zip builds a durable sha-keyed store (Azure Artifacts / blob / Packages) and
+  # having reusable-deploy-zip pull from there instead.
+  deploy-zip:
+    needs: select
+    if: needs.select.outputs.has_zip == 'true'
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJson(needs.select.outputs.matrix) }}
+        target: ${{ fromJson(needs.select.outputs.matrix_zip) }}
     uses: mbeema/platform-pipelines/.github/workflows/reusable-deploy-poc.yml@v1
     with:
       environment: ${{ inputs.environment }}
