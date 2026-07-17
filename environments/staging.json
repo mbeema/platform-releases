@@ -7,8 +7,9 @@
       "verified": "2026-07-17"
     },
     "payments": {
-      "version": "sha-9f8e7d6",
-      "semver": "v9.0.1"
+      "version": "sha-e56e0e4",
+      "semver": "v0.1.0",
+      "verified": "2026-07-17"
     },
     "inventory": {
       "version": "sha-cc33dd4",
