@@ -1,13 +1,37 @@
 {
   "environment": "prod",
   "services": {
-    "orders":        { "version": "sha-a1b2c3d", "semver": "v1.4.2" },
-    "payments":      { "version": "sha-9f8e7d6", "semver": "v9.0.1" },
-    "inventory":     { "version": "sha-4c5d6e7", "semver": "v2.2.0" },
-    "catalog":       { "version": "sha-11aa22b", "semver": "v5.0.3" },
-    "shipping":      { "version": "sha-77cc88d", "semver": "v1.0.0" },
-    "notifications": { "version": "sha-33ee44f", "semver": "v4.4.4" },
-    "pricing":       { "version": "sha-5506661", "semver": "v3.1.0" },
-    "auth":          { "version": "sha-99ab77c", "semver": "v7.2.1" }
+    "orders": {
+      "version": "sha-cfd56e5",
+      "semver": "v0.1.0"
+    },
+    "payments": {
+      "version": "sha-9f8e7d6",
+      "semver": "v9.0.1"
+    },
+    "inventory": {
+      "version": "sha-4c5d6e7",
+      "semver": "v2.2.0"
+    },
+    "catalog": {
+      "version": "sha-11aa22b",
+      "semver": "v5.0.3"
+    },
+    "shipping": {
+      "version": "sha-77cc88d",
+      "semver": "v1.0.0"
+    },
+    "notifications": {
+      "version": "sha-33ee44f",
+      "semver": "v4.4.4"
+    },
+    "pricing": {
+      "version": "sha-5506661",
+      "semver": "v3.1.0"
+    },
+    "auth": {
+      "version": "sha-99ab77c",
+      "semver": "v7.2.1"
+    }
   }
 }
