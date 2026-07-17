@@ -2,12 +2,12 @@
   "environment": "prod",
   "services": {
     "orders": {
-      "version": "sha-19c5856",
-      "semver": "v0.1.3"
+      "version": "sha-1a03ff9",
+      "semver": "v0.1.6"
     },
     "payments": {
-      "version": "sha-0d0e002",
-      "semver": "v0.1.0"
+      "version": "sha-2ecac68",
+      "semver": "v0.1.2"
     }
   }
 }
