@@ -21,12 +21,30 @@ on:
           - staging
           - prod
         default: staging
-      services:
-        description: "Service(s): one name, comma-list, or 'all'. For a specific version, name exactly ONE."
-        required: true
-        default: "all"
+      # ---- Pick apps by ticking the boxes below ------------------------------
+      # workflow_dispatch has no multi-select, so each app is its own checkbox.
+      # `all_apps` is the release-train shortcut (promote everything releasable)
+      # and overrides the individual boxes when ticked.
+      # ADD A NEW APP: add one boolean here + one line in "Collect selected apps"
+      # below. Keep this list in sync with services.json (the registry).
+      all_apps:
+        description: "ALL apps (release train — ignores the individual boxes below)"
+        type: boolean
+        default: false
+      orders:
+        description: "orders"
+        type: boolean
+        default: false
+      payments:
+        description: "payments"
+        type: boolean
+        default: false
+      platform_infra:
+        description: "platform-infra"
+        type: boolean
+        default: false
       version:
-        description: "Specific build to release (a vX.Y.Z tag or sha-xxxxxxx). Blank = promote latest from the env below."
+        description: "Pin an EXACT build (vX.Y.Z tag or sha-xxxxxxx) — tick EXACTLY ONE app. Blank = promote latest from the env below."
         required: false
         default: ""
 
@@ -38,6 +56,7 @@ jobs:
   select:
     runs-on: ubuntu-latest
     outputs:
+      services: ${{ steps.pick.outputs.services }}   # ticked apps as a comma-list (or 'all')
       matrix: ${{ steps.sel.outputs.selected }}
       has: ${{ steps.sel.outputs.has }}
       matrix_container: ${{ steps.split.outputs.matrix_container }}
@@ -52,11 +71,37 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Turn the ticked checkboxes into the comma-list the rest of the pipeline
+      # already speaks. `all_apps` wins if set. Read booleans from env (never
+      # inline platform-infra in a ${{ }} expr — the hyphen parses as minus).
+      - name: Collect selected apps
+        id: pick
+        env:
+          ALL_APPS: ${{ inputs.all_apps }}
+          ORDERS: ${{ inputs.orders }}
+          PAYMENTS: ${{ inputs.payments }}
+          PLATFORM_INFRA: ${{ inputs.platform_infra }}
+        run: |
+          set -e
+          if [ "$ALL_APPS" = "true" ]; then
+            echo "services=all" >> "$GITHUB_OUTPUT"
+            echo "Selected: all (release train)"; exit 0
+          fi
+          sel=()
+          [ "$ORDERS" = "true" ]         && sel+=("orders")
+          [ "$PAYMENTS" = "true" ]       && sel+=("payments")
+          [ "$PLATFORM_INFRA" = "true" ] && sel+=("platform-infra")
+          if [ ${#sel[@]} -eq 0 ]; then
+            echo "::error::pick at least one app (tick a box, or 'all_apps')"; exit 1
+          fi
+          IFS=,; echo "services=${sel[*]}" >> "$GITHUB_OUTPUT"
+          echo "Selected: ${sel[*]}"
+
       - name: Resolve & pin target ledger
         id: sel
         env:
           GH_TOKEN: ${{ github.token }}
-          SVC: ${{ inputs.services }}
+          SVC: ${{ steps.pick.outputs.services }}
           VER: ${{ inputs.version }}
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
@@ -107,7 +152,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Ledger already at this pin — redeploy with no ledger change."
           else
-            git commit -m "release(${{ inputs.environment }}): ${{ inputs.services }} ${{ inputs.version }}"
+            git commit -m "release(${{ inputs.environment }}): ${{ steps.pick.outputs.services }} ${{ inputs.version }}"
             for i in $(seq 1 5); do
               git pull --rebase --autostash origin main && git push origin HEAD:main && break
               echo "push retry $i"; sleep 3
@@ -116,7 +161,7 @@ jobs:
 
       - name: Nothing to release
         if: steps.sel.outputs.has != 'true'
-        run: echo "Nothing to release for '${{ inputs.services }}' → ${{ inputs.environment }}."
+        run: echo "Nothing to release for '${{ steps.pick.outputs.services }}' → ${{ inputs.environment }}."
 
   # Two jobs, not one: a reusable-workflow `uses:` cannot be selected by a
   # matrix expression, so container and zip services route separately.
@@ -259,7 +304,7 @@ jobs:
             if git diff --cached --quiet; then
               echo "Approval already recorded at tip — nothing to commit."; exit 0
             fi
-            git commit -m "approve(${{ inputs.environment }}): ${{ inputs.services }} by ${{ steps.appr.outputs.by }}"
+            git commit -m "approve(${{ inputs.environment }}): ${{ needs.select.outputs.services }} by ${{ steps.appr.outputs.by }}"
             git push origin HEAD:main && exit 0
             echo "push retry $i"; sleep 3
           done
