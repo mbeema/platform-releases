@@ -2,8 +2,8 @@
   "service": "orders",
   "environments": {
     "dev": {
-      "version": "sha-4ef2ed3",
-      "semver": "v0.1.7"
+      "version": "sha-2e15f86",
+      "semver": "v0.1.8"
     },
     "staging": {
       "version": "sha-1a03ff9",
